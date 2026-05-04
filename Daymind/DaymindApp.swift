@@ -6,9 +6,18 @@
 //
 
 import SwiftUI
+import RevenueCat
 
 @main
 struct DaymindApp: App {
+    init() {
+        #if DEBUG
+        Purchases.logLevel = .debug
+        #endif
+
+        Purchases.configure(withAPIKey: "test_sBQUvNsrTUdRjdZeozIQaaFeLbP")
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

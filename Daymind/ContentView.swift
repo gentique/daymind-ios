@@ -6,10 +6,12 @@
 //
 
 import SwiftUI
+import RevenueCatUI
 
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = ConversationViewModel()
+    @State private var isPaywallPresented = false
 
     var body: some View {
         NavigationStack {
@@ -37,6 +39,19 @@ struct ContentView: View {
             }
             .navigationTitle("Daymind")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isPaywallPresented = true
+                    } label: {
+                        Image(systemName: "crown")
+                    }
+                    .accessibilityLabel("Show paywall")
+                }
+            }
+        }
+        .sheet(isPresented: $isPaywallPresented) {
+            PaywallView()
         }
         .onChange(of: scenePhase) { _, newPhase in
             viewModel.updateScenePhase(newPhase)
