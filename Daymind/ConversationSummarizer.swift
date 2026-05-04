@@ -10,17 +10,26 @@ import FoundationModels
 
 enum ConversationSummarizerError: LocalizedError {
     case modelUnavailable(String)
+    case generationFailed(String)
 
     var errorDescription: String? {
         switch self {
-        case .modelUnavailable(let reason):
-            reason
+        case .modelUnavailable(let reason): reason
+        case .generationFailed(let reason): reason
         }
     }
 }
 
 final class ConversationSummarizer {
     private let model = SystemLanguageModel.default
+
+    private static let instructions = """
+    You maintain a running summary of a live conversation for the person recording it.
+    Always produce a complete, fresh summary and a fresh list of key details that reflect the entire conversation so far.
+    Be factual. Never invent names, dates, decisions, or follow-ups that were not said.
+    Key details must be concrete: decisions, action items, risks, questions, numbers, dates, or named entities. Skip generic observations.
+    If nothing concrete has been said yet, return an empty list of key details.
+    """
 
     var isAvailable: Bool {
         model.availability == .available
@@ -41,42 +50,71 @@ final class ConversationSummarizer {
         }
     }
 
-    func summarize(transcriptDelta: String, currentSummary: String) async throws -> ConversationSummary {
+    func summarize(
+        transcriptTail: String,
+        previousSummary: String,
+        previousKeyInsights: [String]
+    ) async throws -> ConversationSummary {
         guard isAvailable else {
             throw ConversationSummarizerError.modelUnavailable(availabilityMessage)
         }
 
-        let session = LanguageModelSession(model: model) {
-            """
-            You summarize live conversations for the person recording them.
-            Keep the result useful, factual, and compact.
-            Do not invent names, dates, decisions, or action items.
-            Prefer concrete key details over generic observations.
-            """
-        }
+        let session = LanguageModelSession(model: model, instructions: Self.instructions)
 
-        let prompt = """
-        Existing summary:
-        \(currentSummary.isEmpty ? "No summary yet." : currentSummary)
-
-        New transcript text:
-        \(transcriptDelta)
-
-        Return an updated summary and up to 6 key insights or key details.
-        """
-
+        // Greedy sampling = deterministic structured extraction. Temperature is
+        // meaningless with greedy, so we omit it. The token ceiling needs to be
+        // generous enough to fit the JSON envelope plus a multi-sentence summary
+        // and up to 6 insights — 500 truncated the array.
         let options = GenerationOptions(
             sampling: .greedy,
-            temperature: 0.1,
-            maximumResponseTokens: 500
+            maximumResponseTokens: 1024
         )
 
-        let response = try await session.respond(
-            to: prompt,
-            generating: GeneratedConversationSummary.self,
-            options: options
-        )
+        let priorInsightsBlock = previousKeyInsights.isEmpty
+            ? "(none yet)"
+            : previousKeyInsights.map { "- \($0)" }.joined(separator: "\n")
 
-        return response.content.conversationSummary
+        let prompt = """
+        Summary so far:
+        \(previousSummary.isEmpty ? "(none yet)" : previousSummary)
+
+        Key details so far:
+        \(priorInsightsBlock)
+
+        Most recent transcript excerpt (verbatim):
+        \(transcriptTail)
+
+        Produce a refreshed summary covering the full conversation, plus a refreshed list of up to 6 key details. Carry forward earlier details that still matter, drop any that no longer apply, and add new ones from the recent transcript.
+        """
+
+        do {
+            let response = try await session.respond(
+                to: prompt,
+                generating: GeneratedConversationSummary.self,
+                options: options
+            )
+            return response.content.conversationSummary
+        } catch let error as LanguageModelSession.GenerationError {
+            throw ConversationSummarizerError.generationFailed(Self.message(for: error))
+        }
+    }
+
+    private static func message(for error: LanguageModelSession.GenerationError) -> String {
+        switch error {
+        case .exceededContextWindowSize:
+            "The conversation got too long for on-device summarization."
+        case .guardrailViolation:
+            "Apple Intelligence declined to summarize this content."
+        case .unsupportedLanguageOrLocale:
+            "This conversation language is not yet supported on device."
+        case .decodingFailure:
+            "Apple Intelligence returned an incomplete response. Trying again may help."
+        case .rateLimited:
+            "Too many summary requests in a row. Slowing down."
+        case .assetsUnavailable:
+            "Apple Intelligence assets are still loading."
+        default:
+            error.errorDescription ?? "Summarization failed."
+        }
     }
 }

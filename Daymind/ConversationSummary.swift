@@ -17,10 +17,13 @@ struct ConversationSummary: Equatable {
 
 @Generable
 struct GeneratedConversationSummary {
-    @Guide(description: "A concise, plain-language summary of the conversation so far.")
+    @Guide(description: "A concise plain-language paragraph (2-4 sentences) summarizing the conversation so far. Cover only what was actually said.")
     var summary: String
 
-    @Guide(description: "Important decisions, facts, risks, questions, or follow-up items mentioned in the conversation.")
+    @Guide(
+        description: "Concrete decisions, action items, risks, questions, dates, numbers, or named entities mentioned in the conversation. One short sentence each. Skip generic observations. Return an empty list if nothing concrete has been said yet.",
+        .maximumCount(6)
+    )
     var keyInsights: [String]
 
     var conversationSummary: ConversationSummary {
