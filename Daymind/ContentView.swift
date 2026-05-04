@@ -23,6 +23,7 @@ struct ContentView: View {
                             RecordingControl(viewModel: viewModel)
                             SummarySection(viewModel: viewModel)
                             KeyInsightsSection(insights: viewModel.keyInsights)
+                            SpeakerDiarizationSection(chunks: viewModel.speakerChunks)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
@@ -209,6 +210,38 @@ private struct LiveTranscriptView: View {
         .padding()
         .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .contain)
+    }
+}
+
+private struct SpeakerDiarizationSection: View {
+    let chunks: [SpeechChunk]
+
+    var body: some View {
+        if !chunks.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Speakers", systemImage: "person.2")
+                    .font(.headline)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(chunks) { chunk in
+                        HStack(alignment: .top, spacing: 10) {
+                            Text(chunk.speakerLabel)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(chunk.speakerIndex == 0 ? Color.blue : Color.orange)
+                                .frame(width: 72, alignment: .leading)
+
+                            Text(chunk.text)
+                                .font(.body)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
     }
 }
 

@@ -27,6 +27,7 @@ final class ConversationViewModel: ObservableObject {
     private var periodicSummaryTask: Task<Void, Never>?
     private var activeSummaryTask: Task<Void, Never>?
     private var lastSummarizedTranscript = ""
+    private var lastSummarizedLabeledTranscript = ""
     private var hasQueuedSummaryUpdate = false
 
     init() {
@@ -115,6 +116,29 @@ final class ConversationViewModel: ObservableObject {
         schedulePauseSummaryUpdate()
     }
 
+    /// Combines finalized speaker-labeled chunks with the live partial transcript.
+    /// Falls back to the plain transcript when no chunks have been labeled yet.
+    private var labeledTranscriptForSummarizer: String {
+        let labeledChunks = speakerChunks
+            .filter { $0.speakerIndex >= 0 }
+            .map { "[\($0.speakerLabel)]: \($0.text)" }
+            .joined(separator: "\n")
+
+        // Append the live partial (not yet labeled) if it differs from last chunk.
+        let partial = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lastChunkText = speakerChunks.last?.text.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if labeledChunks.isEmpty {
+            return partial
+        }
+
+        // Only append the partial if it adds new content beyond the last chunk.
+        if !partial.isEmpty, !partial.hasPrefix(lastChunkText) {
+            return labeledChunks + "\n[Current speaker]: " + partial
+        }
+        return labeledChunks
+    }
+
     private func handleRecordingEnded() {
         isRecording = false
         pauseSummaryTask?.cancel()
@@ -154,10 +178,13 @@ final class ConversationViewModel: ObservableObject {
             return
         }
 
+        // Use speaker-labeled transcript when available, plain transcript otherwise.
         let currentTranscript = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !currentTranscript.isEmpty else { return }
 
-        if !force, currentTranscript == lastSummarizedTranscript {
+        let currentLabeled = labeledTranscriptForSummarizer
+
+        if !force, currentLabeled == lastSummarizedLabeledTranscript {
             return
         }
 
@@ -166,7 +193,7 @@ final class ConversationViewModel: ObservableObject {
             return
         }
 
-        let transcriptDelta = delta(from: currentTranscript)
+        let transcriptDelta = labeledDelta(from: currentLabeled)
         guard !transcriptDelta.isEmpty else { return }
 
         let currentSummary = summary
@@ -181,26 +208,27 @@ final class ConversationViewModel: ObservableObject {
                     transcriptDelta: transcriptDelta,
                     currentSummary: currentSummary
                 )
-                self.applySummaryResult(result, summarizedTranscript: currentTranscript)
+                self.applySummaryResult(result, summarizedTranscript: currentTranscript, labeledTranscript: currentLabeled)
             } catch {
                 self.finishSummaryUpdate(errorMessage: error.localizedDescription)
             }
         }
     }
 
-    private func delta(from currentTranscript: String) -> String {
-        if currentTranscript.hasPrefix(lastSummarizedTranscript) {
-            return String(currentTranscript.dropFirst(lastSummarizedTranscript.count))
+    private func labeledDelta(from currentLabeled: String) -> String {
+        if currentLabeled.hasPrefix(lastSummarizedLabeledTranscript) {
+            return String(currentLabeled.dropFirst(lastSummarizedLabeledTranscript.count))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
         }
-
-        return currentTranscript
+        // Labels may have shifted (re-clustering) — resend full labeled transcript.
+        return currentLabeled
     }
 
-    private func applySummaryResult(_ result: ConversationSummary, summarizedTranscript: String) {
+    private func applySummaryResult(_ result: ConversationSummary, summarizedTranscript: String, labeledTranscript: String) {
         summary = result.summary
         appendKeyInsights(result.keyInsights)
         lastSummarizedTranscript = summarizedTranscript
+        lastSummarizedLabeledTranscript = labeledTranscript
         finishSummaryUpdate(errorMessage: nil)
     }
 

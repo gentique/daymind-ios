@@ -52,6 +52,9 @@ final class ConversationSummarizer {
             Keep the result useful, factual, and compact.
             Do not invent names, dates, decisions, or action items.
             Prefer concrete key details over generic observations.
+            The transcript may contain speaker labels such as [Speaker A] and [Speaker B].
+            When speaker labels are present, attribute statements and insights to the correct speaker.
+            Use "Speaker A" and "Speaker B" consistently in the summary and key details.
             """
         }
 
