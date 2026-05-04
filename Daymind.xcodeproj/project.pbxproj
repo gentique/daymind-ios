@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1D4BDE432FA8C1D3001189E2 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 1D4BDE422FA8C1D3001189E2 /* RevenueCat */; };
+		1D4BDE452FA8C1D3001189E2 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 1D4BDE442FA8C1D3001189E2 /* RevenueCatUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		1D4BDE152FA8B126001189E2 /* Daymind.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Daymind.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +41,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1D4BDE452FA8C1D3001189E2 /* RevenueCatUI in Frameworks */,
+				1D4BDE432FA8C1D3001189E2 /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +85,8 @@
 			);
 			name = Daymind;
 			packageProductDependencies = (
+				1D4BDE422FA8C1D3001189E2 /* RevenueCat */,
+				1D4BDE442FA8C1D3001189E2 /* RevenueCatUI */,
 			);
 			productName = Daymind;
 			productReference = 1D4BDE152FA8B126001189E2 /* Daymind.app */;
@@ -107,6 +116,9 @@
 			);
 			mainGroup = 1D4BDE0C2FA8B126001189E2;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1D4BDE412FA8C1D3001189E2 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1D4BDE162FA8B126001189E2 /* Products */;
 			projectDirPath = "";
@@ -337,6 +349,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1D4BDE412FA8C1D3001189E2 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.70.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1D4BDE422FA8C1D3001189E2 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1D4BDE412FA8C1D3001189E2 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+		1D4BDE442FA8C1D3001189E2 /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1D4BDE412FA8C1D3001189E2 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1D4BDE0D2FA8B126001189E2 /* Project object */;
 }
