@@ -6,12 +6,14 @@
 //
 
 import SwiftUI
+import RevenueCat
 import RevenueCatUI
 
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = ConversationViewModel()
     @State private var isPaywallPresented = false
+    @State private var purchaseHasActiveEntitlement = false
 
     var body: some View {
         NavigationStack {
@@ -41,21 +43,47 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isPaywallPresented = true
-                    } label: {
-                        Image(systemName: "crown")
+                    if purchaseHasActiveEntitlement {
+                        Text("PRO")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.green, in: Capsule())
+                    } else {
+                        Button {
+                            isPaywallPresented = true
+                        } label: {
+                            Image(systemName: "crown")
+                        }
+                        .accessibilityLabel("Show paywall")
                     }
-                    .accessibilityLabel("Show paywall")
                 }
+                .sharedBackgroundVisibility(purchaseHasActiveEntitlement ? .hidden : .automatic)
             }
         }
         .sheet(isPresented: $isPaywallPresented) {
             PaywallView()
+                .onPurchaseCompleted { customerInfo in
+                    updatePurchaseState(with: customerInfo)
+                    isPaywallPresented = false
+                }
+        }
+        .task {
+            await refreshPurchaseState()
         }
         .onChange(of: scenePhase) { _, newPhase in
             viewModel.updateScenePhase(newPhase)
         }
+    }
+
+    private func refreshPurchaseState() async {
+        guard let customerInfo = try? await Purchases.shared.customerInfo() else { return }
+        updatePurchaseState(with: customerInfo)
+    }
+
+    private func updatePurchaseState(with customerInfo: CustomerInfo) {
+        purchaseHasActiveEntitlement = !customerInfo.entitlements.active.isEmpty
     }
 }
 
