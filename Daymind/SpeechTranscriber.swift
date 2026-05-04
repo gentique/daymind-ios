@@ -39,6 +39,8 @@ final class SpeechTranscriber: NSObject {
     var onStatusChange: ((String) -> Void)?
     var onFailure: ((Error) -> Void)?
     var onRecordingEnded: (() -> Void)?
+    /// Called whenever speaker clustering is updated with the latest chunks.
+    var onSpeakerChunksChange: (([SpeechChunk]) -> Void)?
 
     private let audioEngine = AVAudioEngine()
     private var speechRecognizer: SFSpeechRecognizer?
@@ -49,6 +51,8 @@ final class SpeechTranscriber: NSObject {
     private var currentPartialTranscript = ""
     private var recognitionGeneration = 0
     private var isRecording = false
+
+    let speakerDiarizer = SpeakerDiarizer()
 
     override init() {
         super.init()
@@ -123,6 +127,10 @@ final class SpeechTranscriber: NSObject {
         accumulatedTranscript = ""
         currentPartialTranscript = ""
         isRecording = true
+        speakerDiarizer.reset()
+        speakerDiarizer.onChunksUpdated = { [weak self] (chunks: [SpeechChunk]) in
+            self?.onSpeakerChunksChange?(chunks)
+        }
 
         try configureAudioSession()
         try startAudioEngine()
@@ -205,6 +213,9 @@ final class SpeechTranscriber: NSObject {
                 if result.isFinal {
                     self.accumulatedTranscript = self.combinedTranscript
                     self.currentPartialTranscript = ""
+
+                    // Feed acoustic data into the speaker diarizer.
+                    self.speakerDiarizer.process(result: result)
                 }
             }
 

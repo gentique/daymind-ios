@@ -18,6 +18,8 @@ final class ConversationViewModel: ObservableObject {
     @Published var statusText = "Ready to listen."
     @Published var modelStatusText = ""
     @Published var isSummarizing = false
+    /// Speaker-diarized chunks, updated after each ~55 s recognition window finalizes.
+    @Published var speakerChunks: [SpeechChunk] = []
 
     private let transcriber = SpeechTranscriber()
     private let summarizer = ConversationSummarizer()
@@ -51,6 +53,12 @@ final class ConversationViewModel: ObservableObject {
         transcriber.onRecordingEnded = { [weak self] in
             Task { @MainActor in
                 self?.handleRecordingEnded()
+            }
+        }
+
+        transcriber.onSpeakerChunksChange = { [weak self] (chunks: [SpeechChunk]) in
+            Task { @MainActor in
+                self?.speakerChunks = chunks
             }
         }
     }
