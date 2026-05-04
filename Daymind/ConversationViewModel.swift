@@ -191,9 +191,30 @@ final class ConversationViewModel: ObservableObject {
 
     private func applySummaryResult(_ result: ConversationSummary, summarizedTranscript: String) {
         summary = result.summary
-        keyInsights = Array(result.keyInsights.prefix(6))
+        appendKeyInsights(result.keyInsights)
         lastSummarizedTranscript = summarizedTranscript
         finishSummaryUpdate(errorMessage: nil)
+    }
+
+    private func appendKeyInsights(_ newInsights: [String]) {
+        var existingInsights = Set(keyInsights.map(normalizedInsight))
+
+        for insight in newInsights {
+            let trimmedInsight = insight.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedInsight.isEmpty else { continue }
+
+            let normalized = normalizedInsight(trimmedInsight)
+            guard !existingInsights.contains(normalized) else { continue }
+
+            keyInsights.append(trimmedInsight)
+            existingInsights.insert(normalized)
+        }
+    }
+
+    private func normalizedInsight(_ insight: String) -> String {
+        insight
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
     }
 
     private func finishSummaryUpdate(errorMessage: String?) {
