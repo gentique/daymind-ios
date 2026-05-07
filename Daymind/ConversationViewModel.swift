@@ -158,10 +158,9 @@ final class ConversationViewModel: ObservableObject {
             return
         }
 
-        let transcriptDelta = delta(from: currentTranscript)
-        guard !transcriptDelta.isEmpty else { return }
-
-        let currentSummary = summary
+        let tail = recentTail(of: currentTranscript)
+        let priorSummary = summary
+        let priorInsights = keyInsights
         isSummarizing = true
         modelStatusText = "Updating key details on device..."
 
@@ -170,8 +169,9 @@ final class ConversationViewModel: ObservableObject {
 
             do {
                 let result = try await self.summarizer.summarize(
-                    transcriptDelta: transcriptDelta,
-                    currentSummary: currentSummary
+                    transcriptTail: tail,
+                    previousSummary: priorSummary,
+                    previousKeyInsights: priorInsights
                 )
                 self.applySummaryResult(result, summarizedTranscript: currentTranscript)
             } catch {
@@ -180,13 +180,16 @@ final class ConversationViewModel: ObservableObject {
         }
     }
 
-    private func delta(from currentTranscript: String) -> String {
-        if currentTranscript.hasPrefix(lastSummarizedTranscript) {
-            return String(currentTranscript.dropFirst(lastSummarizedTranscript.count))
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+    /// The summary + insights carry long-term context, so we only need to feed
+    /// the model a recent verbatim chunk to bound prompt size.
+    private func recentTail(of transcript: String) -> String {
+        let limit = 2000
+        guard transcript.count > limit else { return transcript }
+        let suffix = transcript.suffix(limit)
+        if let breakIndex = suffix.firstIndex(where: { $0 == " " || $0 == "\n" }) {
+            return String(suffix[suffix.index(after: breakIndex)...])
         }
-
-        return currentTranscript
+        return String(suffix)
     }
 
     private func applySummaryResult(_ result: ConversationSummary, summarizedTranscript: String) {
